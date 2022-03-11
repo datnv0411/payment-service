@@ -6,8 +6,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
-import vn.cmc.du21.orderservice.common.restful.StandardResponse;
-import vn.cmc.du21.orderservice.common.restful.StatusResponse;
+import vn.cmc.du21.paymentservice.common.restful.StandardResponse;
+import vn.cmc.du21.paymentservice.common.restful.StatusResponse;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {

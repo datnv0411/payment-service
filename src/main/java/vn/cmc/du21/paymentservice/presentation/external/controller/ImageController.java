@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import vn.cmc.du21.orderservice.service.ImageService;
+import vn.cmc.du21.paymentservice.service.ImageService;
 
 @RestController
 @Slf4j

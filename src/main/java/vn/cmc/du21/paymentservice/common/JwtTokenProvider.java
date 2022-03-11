@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.websocket.AuthenticationException;
 import org.springframework.core.env.Environment;
 import org.springframework.web.client.RestTemplate;
-import vn.cmc.du21.orderservice.presentation.internal.response.UserResponse;
+import vn.cmc.du21.paymentservice.presentation.internal.response.UserResponse;
 
 import javax.servlet.http.HttpServletRequest;
 
