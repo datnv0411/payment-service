@@ -1,4 +1,4 @@
-package vn.cmc.du21.paymentservice.internal.entity;
+package vn.cmc.du21.paymentservice.persistence.internal.entity;
 
 import javax.persistence.*;
 
@@ -8,6 +8,7 @@ public class PaymentOrder {
     @EmbeddedId
     private PaymentOrderId paymentOrderId;
 
+    private long totalPaid;
     private String status;
 
     @ManyToOne
@@ -17,8 +18,9 @@ public class PaymentOrder {
     public PaymentOrder() {
     }
 
-    public PaymentOrder(PaymentOrderId paymentOrderId, String status, Payment payment) {
+    public PaymentOrder(PaymentOrderId paymentOrderId, long paymentPaid, String status, Payment payment) {
         this.paymentOrderId = paymentOrderId;
+        this.totalPaid = paymentPaid;
         this.status = status;
         this.payment = payment;
     }
@@ -29,6 +31,14 @@ public class PaymentOrder {
 
     public void setPaymentOrderId(PaymentOrderId paymentOrderId) {
         this.paymentOrderId = paymentOrderId;
+    }
+
+    public long getTotalPaid() {
+        return totalPaid;
+    }
+
+    public void setTotalPaid(long totalPaid) {
+        this.totalPaid = totalPaid;
     }
 
     public String getStatus() {

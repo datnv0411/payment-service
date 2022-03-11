@@ -1,4 +1,4 @@
-package vn.cmc.du21.paymentservice.internal.entity;
+package vn.cmc.du21.paymentservice.persistence.internal.entity;
 
 import javax.persistence.*;
 import java.util.List;
