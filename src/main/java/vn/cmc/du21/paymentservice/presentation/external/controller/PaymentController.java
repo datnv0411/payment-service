@@ -33,7 +33,6 @@ public class PaymentController {
     @Autowired
     ImageService imageService;
 
-
     private static final String GET_DETAIL_ORDER = "/api/v1.0/order/";
     private static final String PATH_ORDER_SERVICE = "path.order-service";
 
@@ -53,8 +52,13 @@ public class PaymentController {
        );
     }
 
+    @GetMapping("cod/{orderId}")
+    void createPaymentCOD(HttpServletRequest request, HttpServletResponse response,
+                            @PathVariable long orderId) throws Exception {
+    }
+
     @GetMapping("vnpay/{orderId}")
-    void createPaymentVNpay(HttpServletRequest request, HttpServletResponse response,
+    ResponseEntity<Object> createPaymentVNpay(HttpServletRequest request, HttpServletResponse response,
                                               @PathVariable long orderId) throws Exception {
 
         log.info("Mapped removeProduct method {{GET: /payment/vnpay/orderId}}");
@@ -79,7 +83,15 @@ public class PaymentController {
                 request.getRemoteAddr(),
                 MvcUriComponentsBuilder.fromController(PaymentController.class).toUriString() +"/response/vnpay"
         );
-        response.sendRedirect(linkPay);
+
+        return ResponseEntity.status(HttpStatus.OK).body(
+                new StandardResponse<>(
+                        StatusResponse.SUCCESSFUL,
+                        "Success!!",
+                        linkPay
+                )
+        );
+        //response.sendRedirect(linkPay);
     }
 
     @GetMapping("momo/{orderId}")
@@ -178,9 +190,9 @@ public class PaymentController {
                                             HttpServletRequest request, HttpServletResponse response){
 
         if (responseCode==null || !responseCode.chars().allMatch(Character::isDigit) || responseCode.equals("")) responseCode="00";
-        if (totalPaid==null || !totalPaid.chars().allMatch(Character::isDigit) || totalPaid.equals("")) responseCode="0";
+        if (totalPaid==null || !totalPaid.chars().allMatch(Character::isDigit) || totalPaid.equals("")) totalPaid="0";
 
-        String result = paymentService.checkResultPaid(responseCode, orderId, totalPaid);
+        String result = paymentService.checkResultPaid(responseCode, orderId, totalPaid, "Momo");
         final String uri = env.getProperty("path.order-service") + "/api/v1.0/order/paid"
                 + "?orderId=" +orderId + "&paymentId=" + paymentService.getPaymentIdByPaymentName("Momo");
 
@@ -208,9 +220,9 @@ public class PaymentController {
                                                HttpServletRequest request, HttpServletResponse response){
 
         if (responseCode==null || !responseCode.chars().allMatch(Character::isDigit) || responseCode.equals("")) responseCode="00";
-        if (totalPaid==null || !totalPaid.chars().allMatch(Character::isDigit) || totalPaid.equals("")) responseCode="0";
+        if (totalPaid==null || !totalPaid.chars().allMatch(Character::isDigit) || totalPaid.equals("")) totalPaid="0";
 
-        String result = paymentService.checkResultPaid(responseCode, orderId, totalPaid);
+        String result = paymentService.checkResultPaid(responseCode, orderId, totalPaid, "Zalopay");
         final String uri = env.getProperty("path.order-service") + "/api/v1.0/order/paid"
                 + "?orderId=" +orderId + "&paymentId=" + paymentService.getPaymentIdByPaymentName("Zalopay");
 

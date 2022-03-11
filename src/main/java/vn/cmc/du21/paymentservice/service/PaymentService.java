@@ -99,12 +99,12 @@ public class PaymentService {
     }
 
     @Transactional
-    public String checkResultPaid(String responseCode, String orderId, String totalPaid){
+    public String checkResultPaid(String responseCode, String orderId, String totalPaid, String paymentName){
         if("00".equals(responseCode)){
             long orderIdLong = Long.parseLong(orderId);
             long totalPaidLong = Long.parseLong(totalPaid);
 
-            Payment payment = paymentRepository.findByPaymentName("Vnpay");
+            Payment payment = paymentRepository.findByPaymentName(paymentName);
             if(payment == null)
             {
                 throw new RuntimeException("Not found payment method!!!");
@@ -136,14 +136,6 @@ public class PaymentService {
         );
 
         PaymentOrderId paymentOrderId = new PaymentOrderId(paymentId, orderId);
-
-        if(foundPayment.getPaymentName().equals("COD"))
-        {
-            PaymentOrder paymentOrder = new PaymentOrder();
-            paymentOrder.setPayment(foundPayment);
-            paymentOrder.setPaymentOrderId(paymentOrderId);
-            return paymentOrder;
-        }
 
         PaymentOrder foundPaymentOrder = paymentOrderRepository.findById(paymentOrderId).orElse(null);
         if(foundPaymentOrder == null)
