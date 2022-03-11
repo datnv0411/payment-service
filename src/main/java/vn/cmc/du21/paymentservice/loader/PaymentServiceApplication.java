@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication
 @ComponentScan(basePackages = {"vn.cmc.du21.paymentservice.presentation.external.controller",
-		"vn.cmc.du21.paymentservice.presentation.internal.controller",
+		"vn.cmc.du21.paymentservice.presentation.external.controller",
 		"vn.cmc.du21.paymentservice.service"})
 @EntityScan(basePackages = "vn.cmc.du21.paymentservice.persistence.internal.entity")
 @EnableJpaRepositories(basePackages = "vn.cmc.du21.paymentservice.persistence.internal.repository")

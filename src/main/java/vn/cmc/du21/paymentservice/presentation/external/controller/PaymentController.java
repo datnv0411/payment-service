@@ -1,161 +1,235 @@
 package vn.cmc.du21.paymentservice.presentation.external.controller;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.env.Environment;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
-import vn.cmc.du21.paymentservice.common.ConvertToHMACSHA512;
-import vn.cmc.du21.paymentservice.common.GetRandomNumber;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 import vn.cmc.du21.paymentservice.common.restful.StandardResponse;
 import vn.cmc.du21.paymentservice.common.restful.StatusResponse;
+import vn.cmc.du21.paymentservice.presentation.external.mapper.PaymentOrderMapper;
+import vn.cmc.du21.paymentservice.presentation.external.response.PaymentResponse;
+import vn.cmc.du21.paymentservice.presentation.internal.response.OrderResponse;
+import vn.cmc.du21.paymentservice.service.ImageService;
 import vn.cmc.du21.paymentservice.service.PaymentService;
 
-import javax.servlet.ServletException;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SignatureException;
-import java.text.SimpleDateFormat;
-import java.util.*;
-import org.apache.commons.codec.digest.DigestUtils;
+import java.util.Collections;
 
 @Slf4j
 @RestController
-@RequestMapping(path = "/api/v1.0")
+@RequestMapping(path = "api/v1.0/payment")
 public class PaymentController {
-    /*@Autowired
+    @Autowired
     private Environment env;
     @Autowired
-    PaymentService paymentService;*/
+    PaymentService paymentService;
+    @Autowired
+    ImageService imageService;
 
-    // create URL Payment
-    @PostMapping("/payment/create")
-    ResponseEntity<Object> createPayment(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException, SignatureException, NoSuchAlgorithmException, InvalidKeyException {
 
+    private static final String GET_DETAIL_ORDER = "/api/v1.0/order/";
+    private static final String PATH_ORDER_SERVICE = "path.order-service";
+
+    @GetMapping("get-info-payment")
+    ResponseEntity<Object> checkPaid(@RequestParam(name = "orderId") long orderId,
+                                     @RequestParam(name = "paymentId") long paymentId) throws Throwable {
+
+        log.info("Mapped checkPaid method {{GET: /payment/get-info-payment}}");
+
+        PaymentResponse paymentResponse = PaymentOrderMapper.convertPaymentOrderToPaymentResponse(
+                paymentService.getInfoPayment(orderId, paymentId)
+        );
+
+       return ResponseEntity.ok().body(
+         new StandardResponse<>(
+                 StatusResponse.SUCCESSFUL,
+                 "Get info payment",
+                 paymentResponse
+         )
+       );
+    }
+
+    @GetMapping("vnpay/{orderId}")
+    void createPaymentVNpay(HttpServletRequest request, HttpServletResponse response,
+                                              @PathVariable long orderId) throws Exception {
+
+        log.info("Mapped createPaymentVNpay method {{GET: /payment/vnpay/{orderId}}}");
+
+        //get info order
+        HttpHeaders httpHeaders = new HttpHeaders();
+        RestTemplate restTemplate = new RestTemplate();
+        httpHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        httpHeaders.setBearerAuth(request.getHeader("Authorization").split(" ")[1]);
+        String uri = env.getProperty(PATH_ORDER_SERVICE) + GET_DETAIL_ORDER + orderId;
+
+        HttpEntity<StandardResponse<OrderResponse>> entity = new HttpEntity<>(new StandardResponse<>(), httpHeaders);
+        ResponseEntity<StandardResponse<OrderResponse>> res = restTemplate
+                .exchange(uri, HttpMethod.GET, entity, new ParameterizedTypeReference<StandardResponse<OrderResponse>>() {});
+
+        OrderResponse orderResponse = res.getBody().getData();
+        paymentService.checkStatusOrder(orderResponse.getStatusOrder());
+
+        String linkPay = paymentService.createLink(
+                orderId,
+                orderResponse.getTotalResponse().getTotalOrder(),
+                request.getRemoteAddr(), // get user's ip address
+                MvcUriComponentsBuilder.fromController(PaymentController.class).toUriString() +"/response/vnpay"
+        );
+        response.sendRedirect(linkPay);
+    }
+
+    @GetMapping("momo/{orderId}")
+    ResponseEntity<byte[]> createPaymentMomo(HttpServletRequest request, HttpServletResponse response,
+                            @PathVariable long orderId) throws Exception {
+
+        log.info("Mapped createPaymentMomo method {{GET: /payment/momo/orderId}}");
+
+        //get info order
+        HttpHeaders httpHeaders = new HttpHeaders();
+        RestTemplate restTemplate = new RestTemplate();
+        httpHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        httpHeaders.setBearerAuth(request.getHeader("Authorization").split(" ")[1]);
+        String uri = env.getProperty(PATH_ORDER_SERVICE)+GET_DETAIL_ORDER + orderId;
+
+        HttpEntity<StandardResponse<OrderResponse>> entity = new HttpEntity<>(new StandardResponse<>(), httpHeaders);
+        ResponseEntity<StandardResponse<OrderResponse>> res = restTemplate
+                .exchange(uri, HttpMethod.GET, entity, new ParameterizedTypeReference<StandardResponse<OrderResponse>>() {});
+
+        OrderResponse orderResponse = res.getBody().getData();
+        paymentService.checkStatusOrder(orderResponse.getStatusOrder());
+
+
+        try {
+            byte[] bytes = imageService.readFileContent("qr.png");
+            return ResponseEntity
+                    .ok()
+                    .contentType(MediaType.IMAGE_JPEG)
+                    .body(bytes);
+        }catch (Exception exception) {
+            return ResponseEntity.noContent().build();
+        }
+    }
+
+    @GetMapping("zalopay/{orderId}")
+    ResponseEntity<byte[]> createPaymentZalopay(HttpServletRequest request, HttpServletResponse response,
+                           @PathVariable long orderId) throws Exception {
+
+        log.info("Mapped removeProduct method {{GET: /payment/zalopay/orderId}}");
+
+        //get info order
+        HttpHeaders httpHeaders = new HttpHeaders();
+        RestTemplate restTemplate = new RestTemplate();
+        httpHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        httpHeaders.setBearerAuth(request.getHeader("Authorization").split(" ")[1]);
+        String uri = env.getProperty(PATH_ORDER_SERVICE)+GET_DETAIL_ORDER + orderId;
+
+        HttpEntity<StandardResponse<OrderResponse>> entity = new HttpEntity<>(new StandardResponse<>(), httpHeaders);
+        ResponseEntity<StandardResponse<OrderResponse>> res = restTemplate
+                .exchange(uri, HttpMethod.GET, entity, new ParameterizedTypeReference<StandardResponse<OrderResponse>>() {});
+
+        OrderResponse orderResponse = res.getBody().getData();
+        paymentService.checkStatusOrder(orderResponse.getStatusOrder());
+        try {
+            byte[] bytes = imageService.readFileContent("qr.png");
+            return ResponseEntity
+                    .ok()
+                    .contentType(MediaType.IMAGE_JPEG)
+                    .body(bytes);
+        }catch (Exception exception) {
+            return ResponseEntity.noContent().build();
+        }
+    }
+
+    @GetMapping(value = "/response/vnpay", name = "responsePaymentVnpay")
+    ResponseEntity<Object> checkPaymentVnpay(@RequestParam(name = "vnp_ResponseCode") String vnp_ResponseCode,
+                                             @RequestParam(name = "vnp_TxnRef") String vnp_TxnRef,
+                                             @RequestParam(name = "vnp_Amount") String vnp_Amount,
+                                             HttpServletRequest request, HttpServletResponse response){
+
+        String result = paymentService.checkResultPaidVnpay(vnp_ResponseCode, vnp_TxnRef, vnp_Amount); // vn
+        final String uri = env.getProperty("path.order-service") + "/api/v1.0/order/paid"
+                + "?orderId=" +vnp_TxnRef + "&paymentId=" + paymentService.getPaymentIdByPaymentName("Vnpay");
+
+        HttpHeaders httpHeaders = new HttpHeaders();
+        RestTemplate restTemplate = new RestTemplate();
+        httpHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        httpHeaders.setBearerAuth(request.getHeader("Authorization").split(" ")[1]);
+
+        HttpEntity<StandardResponse<OrderResponse>> entity = new HttpEntity<>(new StandardResponse<>(), httpHeaders);
+        ResponseEntity<StandardResponse<OrderResponse>> res = restTemplate
+                .exchange(uri, HttpMethod.PUT, entity, new ParameterizedTypeReference<StandardResponse<OrderResponse>>() {});
 
         return ResponseEntity.status(HttpStatus.OK).body(
                 new StandardResponse<>(
                         StatusResponse.SUCCESSFUL,
-                        "Success!!",
-                        doPost(req, resp)
+                        result
                 )
         );
     }
 
-    // create IPN URL
-    protected String doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException, SignatureException, NoSuchAlgorithmException, InvalidKeyException {
-        String vnp_Version = "2.1.0";
-        String vnp_Command = "pay";
-        String vnp_OrderInfo = req.getParameter("vnp_OrderInfo");
-        String orderType = req.getParameter("ordertype");
-        String vnp_TxnRef = GetRandomNumber.getRandomNumber();
-        String vnp_IpAddr = "127.0.0.1";
-        String vnp_TmnCode = "FHUNR868";
+    @GetMapping("/response/momo")
+    ResponseEntity<Object> checkPaymentMomo(@RequestParam(name = "responseCode", required = false) String responseCode,
+                                            @RequestParam(name = "orderId") String orderId,
+                                            @RequestParam(name = "totalPaid", required = false) String totalPaid,
+                                            HttpServletRequest request, HttpServletResponse response){
 
-        int amount = Integer.parseInt(req.getParameter("amount")) * 100;
-        Map vnp_Params = new HashMap<>();
-        vnp_Params.put("vnp_Version", vnp_Version);
-        vnp_Params.put("vnp_Command", vnp_Command);
-        vnp_Params.put("vnp_TmnCode", vnp_TmnCode);
-        vnp_Params.put("vnp_Amount", String.valueOf(amount));
-        vnp_Params.put("vnp_CurrCode", "VND");
-        String bank_code = req.getParameter("bankcode");
-        if (bank_code != null && !bank_code.isEmpty()) {
-            vnp_Params.put("vnp_BankCode", bank_code);
-        }
-        vnp_Params.put("vnp_TxnRef", vnp_TxnRef);
-        vnp_Params.put("vnp_OrderInfo", vnp_OrderInfo);
-        vnp_Params.put("vnp_OrderType", orderType);
+        if (responseCode==null || !responseCode.chars().allMatch(Character::isDigit) || responseCode.equals("")) responseCode="00";
+        if (totalPaid==null || !totalPaid.chars().allMatch(Character::isDigit) || totalPaid.equals("")) responseCode="0";
 
-        String locate = req.getParameter("language");
-        if (locate != null && !locate.isEmpty()) {
-            vnp_Params.put("vnp_Locale", locate);
-        } else {
-            vnp_Params.put("vnp_Locale", "vn");
-        }
-        vnp_Params.put("vnp_ReturnUrl", "https%3A%2F%2Fdomainmerchant.vn%2FReturnUrl");
-        vnp_Params.put("vnp_IpAddr", vnp_IpAddr);
-        Calendar cld = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
+        String result = paymentService.checkResultPaid(responseCode, orderId, totalPaid);
+        final String uri = env.getProperty("path.order-service") + "/api/v1.0/order/paid"
+                + "?orderId=" +orderId + "&paymentId=" + paymentService.getPaymentIdByPaymentName("Momo");
 
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
-        String vnp_CreateDate = formatter.format(cld.getTime());
+        HttpHeaders httpHeaders = new HttpHeaders();
+        RestTemplate restTemplate = new RestTemplate();
+        httpHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        httpHeaders.setBearerAuth(request.getHeader("Authorization").split(" ")[1]);
 
-        vnp_Params.put("vnp_CreateDate", vnp_CreateDate);
-        cld.add(Calendar.MINUTE, 15);
-        String vnp_ExpireDate = formatter.format(cld.getTime());
-        //Add Params of 2.1.0 Version
-        vnp_Params.put("vnp_ExpireDate", vnp_ExpireDate);
-        //Billing
-        vnp_Params.put("vnp_Bill_Mobile", req.getParameter("txt_billing_mobile"));
-        vnp_Params.put("vnp_Bill_Email", req.getParameter("txt_billing_email"));
-        String fullName = (req.getParameter("txt_billing_fullname")).trim();
-        if (fullName != null && !fullName.isEmpty()) {
-            int idx = fullName.indexOf(' ');
-            String firstName = fullName.substring(0, idx);
-            String lastName = fullName.substring(fullName.lastIndexOf(' ') + 1);
-            vnp_Params.put("vnp_Bill_FirstName", firstName);
-            vnp_Params.put("vnp_Bill_LastName", lastName);
+        HttpEntity<StandardResponse<OrderResponse>> entity = new HttpEntity<>(new StandardResponse<>(), httpHeaders);
+        ResponseEntity<StandardResponse<OrderResponse>> res = restTemplate
+                .exchange(uri, HttpMethod.PUT, entity, new ParameterizedTypeReference<StandardResponse<OrderResponse>>() {});
 
-        }
-        vnp_Params.put("vnp_Bill_Address", req.getParameter("txt_inv_addr1"));
-        vnp_Params.put("vnp_Bill_City", req.getParameter("txt_bill_city"));
-        vnp_Params.put("vnp_Bill_Country", req.getParameter("txt_bill_country"));
-        if (req.getParameter("txt_bill_state") != null && !req.getParameter("txt_bill_state").isEmpty()) {
-            vnp_Params.put("vnp_Bill_State", req.getParameter("txt_bill_state"));
-        }
-        // Invoice
-        vnp_Params.put("vnp_Inv_Phone", req.getParameter("txt_inv_mobile"));
-        vnp_Params.put("vnp_Inv_Email", req.getParameter("txt_inv_email"));
-        vnp_Params.put("vnp_Inv_Customer", req.getParameter("txt_inv_customer"));
-        vnp_Params.put("vnp_Inv_Address", req.getParameter("txt_inv_addr1"));
-        vnp_Params.put("vnp_Inv_Company", req.getParameter("txt_inv_company"));
-        vnp_Params.put("vnp_Inv_Taxcode", req.getParameter("txt_inv_taxcode"));
-        vnp_Params.put("vnp_Inv_Type", req.getParameter("cbo_inv_type"));
-        //Build data to hash and querystring
-        List fieldNames = new ArrayList(vnp_Params.keySet());
-        Collections.sort(fieldNames);
-        StringBuilder hashData = new StringBuilder();
-        StringBuilder query = new StringBuilder();
-        Iterator itr = fieldNames.iterator();
-        while (itr.hasNext()) {
-            String fieldName = (String) itr.next();
-            String fieldValue = (String) vnp_Params.get(fieldName);
-            if ((fieldValue != null) && (fieldValue.length() > 0)) {
-                //Build hash data
-                hashData.append(fieldName);
-                hashData.append('=');
-                hashData.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
-                //Build query
-                query.append(URLEncoder.encode(fieldName, StandardCharsets.US_ASCII.toString()));
-                query.append('=');
-                query.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
-                if (itr.hasNext()) {
-                    query.append('&');
-                    hashData.append('&');
-                }
-            }
-        }
-        String queryUrl = query.toString();
-        String vnp_SecureHash = ConvertToHMACSHA512.calculateHMAC(hashData.toString(), "JSOIOBFDHLLDXUMYVLNZCUYYMGUOWDXO");
-        queryUrl += "&vnp_SecureHash=" + vnp_SecureHash;
-        String paymentUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html" + "?" + queryUrl;
-
-        return paymentUrl;
-        /*com.google.gson.JsonObject job = new JsonObject();
-        job.addProperty("code", "00");
-        job.addProperty("message", "success");
-        job.addProperty("data", paymentUrl);
-        Gson gson = new Gson();
-        resp.getWriter().write(gson.toJson(job));*/
+        return ResponseEntity.status(HttpStatus.OK).body(
+                new StandardResponse<>(
+                        StatusResponse.SUCCESSFUL,
+                        result
+                )
+        );
     }
-    //vui lòng tham khảo thêm tại code demo
 
+    @GetMapping("/response/zalopay")
+    ResponseEntity<Object> checkPaymentZalopay(@RequestParam(name = "responseCode", required = false) String responseCode,
+                                               @RequestParam(name = "orderId") String orderId,
+                                               @RequestParam(name = "totalPaid", required = false) String totalPaid,
+                                               HttpServletRequest request, HttpServletResponse response){
+
+        if (responseCode==null || !responseCode.chars().allMatch(Character::isDigit) || responseCode.equals("")) responseCode="00";
+        if (totalPaid==null || !totalPaid.chars().allMatch(Character::isDigit) || totalPaid.equals("")) responseCode="0";
+
+        String result = paymentService.checkResultPaid(responseCode, orderId, totalPaid);
+        final String uri = env.getProperty("path.order-service") + "/api/v1.0/order/paid"
+                + "?orderId=" +orderId + "&paymentId=" + paymentService.getPaymentIdByPaymentName("Zalopay");
+
+        HttpHeaders httpHeaders = new HttpHeaders();
+        RestTemplate restTemplate = new RestTemplate();
+        httpHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        httpHeaders.setBearerAuth(request.getHeader("Authorization").split(" ")[1]);
+
+        HttpEntity<StandardResponse<OrderResponse>> entity = new HttpEntity<>(new StandardResponse<>(), httpHeaders);
+        ResponseEntity<StandardResponse<OrderResponse>> res = restTemplate
+                .exchange(uri, HttpMethod.PUT, entity, new ParameterizedTypeReference<StandardResponse<OrderResponse>>() {});
+
+        return ResponseEntity.status(HttpStatus.OK).body(
+                new StandardResponse<>(
+                        StatusResponse.SUCCESSFUL,
+                        result
+                )
+        );
+    }
 }
