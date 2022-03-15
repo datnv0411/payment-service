@@ -52,16 +52,11 @@ public class PaymentController {
        );
     }
 
-    @GetMapping("cod/{orderId}")
-    void createPaymentCOD(HttpServletRequest request, HttpServletResponse response,
-                            @PathVariable long orderId) throws Exception {
-    }
-
     @GetMapping("vnpay/{orderId}")
     ResponseEntity<Object> createPaymentVNpay(HttpServletRequest request, HttpServletResponse response,
                                               @PathVariable long orderId) throws Exception {
 
-        log.info("Mapped removeProduct method {{GET: /payment/vnpay/orderId}}");
+        log.info("Mapped createPaymentVNpay method {{GET: /payment/vnpay/orderId}}");
 
         //get info order
         HttpHeaders httpHeaders = new HttpHeaders();
@@ -98,7 +93,7 @@ public class PaymentController {
     ResponseEntity<byte[]> createPaymentMomo(HttpServletRequest request, HttpServletResponse response,
                             @PathVariable long orderId) throws Exception {
 
-        log.info("Mapped removeProduct method {{GET: /payment/momo/orderId}}");
+        log.info("Mapped createPaymentMomo method {{GET: /payment/momo/orderId}}");
 
         //get info order
         HttpHeaders httpHeaders = new HttpHeaders();
@@ -130,7 +125,7 @@ public class PaymentController {
     ResponseEntity<byte[]> createPaymentZalopay(HttpServletRequest request, HttpServletResponse response,
                            @PathVariable long orderId) throws Exception {
 
-        log.info("Mapped removeProduct method {{GET: /payment/zalopay/orderId}}");
+        log.info("Mapped createPaymentZalopay method {{GET: /payment/zalopay/orderId}}");
 
         //get info order
         HttpHeaders httpHeaders = new HttpHeaders();
@@ -162,6 +157,7 @@ public class PaymentController {
                                              @RequestParam(name = "vnp_Amount") String vnp_Amount,
                                              HttpServletRequest request, HttpServletResponse response){
 
+        log.info("Mapped checkPaymentVnpay method {{GET: /payment/zalopay/orderId}}");
         String result = paymentService.checkResultPaidVnpay(vnp_ResponseCode, vnp_TxnRef, vnp_Amount);
         final String uri = env.getProperty("path.order-service") + "/api/v1.0/order/paid"
                 + "?orderId=" +vnp_TxnRef + "&paymentId=" + paymentService.getPaymentIdByPaymentName("Vnpay");
@@ -189,6 +185,7 @@ public class PaymentController {
                                             @RequestParam(name = "totalPaid", required = false) String totalPaid,
                                             HttpServletRequest request, HttpServletResponse response){
 
+        log.info("Mapped checkPaymentMomo method {{GET: /payment/zalopay/orderId}}");
         if (responseCode==null || !responseCode.chars().allMatch(Character::isDigit) || responseCode.equals("")) responseCode="00";
         if (totalPaid==null || !totalPaid.chars().allMatch(Character::isDigit) || totalPaid.equals("")) totalPaid="0";
 
@@ -219,6 +216,7 @@ public class PaymentController {
                                                @RequestParam(name = "totalPaid", required = false) String totalPaid,
                                                HttpServletRequest request, HttpServletResponse response){
 
+        log.info("Mapped checkPaymentZalopay method {{GET: /payment/zalopay/orderId}}");
         if (responseCode==null || !responseCode.chars().allMatch(Character::isDigit) || responseCode.equals("")) responseCode="00";
         if (totalPaid==null || !totalPaid.chars().allMatch(Character::isDigit) || totalPaid.equals("")) totalPaid="0";
 
